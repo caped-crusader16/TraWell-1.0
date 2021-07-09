@@ -17,6 +17,8 @@ class Filters extends React.Component {
             fuel: [],
             eng: [],
             seats: [],
+            color: [],
+            email: JSON.parse(localStorage.getItem("UserEmail")) ? JSON.parse(localStorage.getItem("UserEmail")) : "",
         }
     }
 
@@ -25,7 +27,7 @@ class Filters extends React.Component {
             return {
                 to: props.toDate,
                 from: props.fromDate,
-                city:props.city
+                city: props.city,
             };
         }
         return null;
@@ -131,6 +133,19 @@ class Filters extends React.Component {
                 }, () => this.setFilters());
             }
         }
+        else if (e.target.className === "color") {
+            if (e.target.checked) {
+                this.setState({
+                    color: [...this.state.color, e.target.name]
+                }, () => this.setFilters());
+            }
+            else {
+                let cat = this.state.color.filter(item => item !== e.target.name);
+                this.setState({
+                    color: [...cat]
+                }, () => this.setFilters());
+            }
+        }
 
     };
 
@@ -178,6 +193,18 @@ class Filters extends React.Component {
                     <h3>Seating Capacity</h3>
                     <CheckBox labelFor="5 seater" className="seats" onChange={this.eventHandler} values={false} />
                     <CheckBox labelFor="7 seater" className="seats" onChange={this.eventHandler} values={false} />
+
+                </div>
+
+
+                <div className="color-filter">
+
+                    <h3>Colors</h3>
+                    <CheckBox labelFor="Crimson Red" className="color" onChange={this.eventHandler} values={false} />
+                    <CheckBox labelFor="Silver" className="color" onChange={this.eventHandler} values={false} />
+                    <CheckBox labelFor="White" className="color" onChange={this.eventHandler} values={false} />
+                    <CheckBox labelFor="Yellow" className="color" onChange={this.eventHandler} values={false} />
+                    <CheckBox labelFor="Black" className="color" onChange={this.eventHandler} values={false} />
 
                 </div>
 
