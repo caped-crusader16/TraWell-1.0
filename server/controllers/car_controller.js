@@ -83,77 +83,6 @@ module.exports.car_details = function (req, res) {
   }
 };
 
-// module.exports.getCarfromLocationAndDate = function (req, res) {
-//   try {
-//     const pattern = date.compile("YYYY-MM-DD");
-//     var tod = date.format(new Date(req.body.to_date), pattern);
-//     var fromd = date.format(new Date(req.body.from_date), pattern);
-//     var dcars = [];
-//     var ccar = [];
-//     var fcar = [];
-//     // confirmedbookings.find({fron_date:{'$gq':new Date()}})
-//     confirmedbookings.find(
-//       {
-//         $or: [
-//           {
-//             $and: [{ from_date: { $lt: fromd } }, { to_date: { $gt: fromd } }],
-//           },
-//           { $and: [{ from_date: { $lt: tod } }, { to_date: { $gt: tod } }] },
-//           { $and: [{ from_date: { $gt: fromd } }, { to_date: { $lt: tod } }] },
-//         ],
-//       },
-//       function (err, bookings) {
-//         if (err) {
-//           console.log(err);
-//           res.status(400).end();
-//         }
-//         bookings.forEach(function (item, index) {
-//           dcars.push(item);
-//         });
-//         // console.log(dcars);
-//         datecarobj = Object.assign({}, dcars);
-//         // console.log(datecarobj);
-//         cars.find(
-//           {
-//             $and: [
-//               { city: req.body.city },
-//               {
-//                 $and: [
-//                   { from_date: { $lt: fromd } },
-//                   { to_date: { $gt: tod } },
-//                 ],
-//               },
-//             ],
-//           },
-//           function (err, carwcity) {
-//             if (err) {
-//               console.log(err);
-//               res.status(400).end();
-//             }
-//             carwcity.forEach(function (item, index) {
-//               ccar.push(item);
-//             });
-//             citycarobj = Object.assign({}, ccar);
-//             console.log(dcars);
-//             console.log(ccar);
-//             ccar.forEach(function (item, index) {
-//               if (dcars.includes(item)) {
-//               } else {
-//                 fcar.push(item);
-//               }
-//             });
-//             console.log(fcar);
-//             return res.status(200).json(fcar);
-//           }
-//         );
-//       }
-//     );
-//   } catch (err) {
-//     console.log(err);
-//     res.status(404).json({ message: "Error in catch block" });
-//   }
-// };
-
 module.exports.getCarfromLocationAndDate = function (req, res) {
   try {
     const pattern = date.compile("YYYY-MM-DD");
@@ -388,73 +317,40 @@ module.exports.acceptrequestbooking = async function (req, res) {
     const pattern = date.compile("YYYY-MM-DD");
     var d1;
     var d2;
-
-    await requestbookings.findOne(
+    const rb = await requestbookings.findOne({ bookingID: req.body.bookingid });
+    await requestbookings.findOneAndUpdate(
       { bookingID: req.body.bookingid },
-      async function (error, rb) {
-        if (err || !rb) {
-          return res.status(400).json({ message: "Server error" });
-        }
-        rb.booking_status = 1;
-        d1 = date.format(new Date(rb.to_date), pattern);
-        d2 = date.format(new Date(rb.from_date), pattern);
-        await rb.save(function (e) {
-          if (e) {
-            console.log("Error in processing cancel booking request");
-            return res
-              .status(400)
-              .json({ message: "Error in processing cancel booking request" });
-          }
-        });
-        const cb = new confirmedbookings({
-          bookingid: rb.bookingID,
-          lender_email: rb.lender_email,
-          borrower_email: rb.borrower_email,
-          carid: rb.carID,
-          from_date: rb.from_date,
-          to_date: rb.to_date,
-          rent: rb.rent,
-          trip_status: 0,
-          cancel: 0,
-        });
-        await cb.save(function (e) {
-          if (e) {
-            console.log(`Error in processing cancel booking request`);
-            return res
-              .status(400)
-              .json({ message: "Error in processing request" });
-          }
-        });
-      }
+      { booking_status: 1 }
     );
-    await requestbookings.find(
-      { carID: req.body.carid },
-      async function (err, rb) {
-        if (err || !rb) {
-          return res
-            .status(400)
-            .json({ message: "Error in processing request" });
+    d1 = date.format(new Date(rb.to_date), pattern);
+    d2 = date.format(new Date(rb.from_date), pattern);
+    const cb = new confirmedbookings({
+      bookingid: rb.bookingID,
+      lender_email: rb.lender_email,
+      borrower_email: rb.borrower_email,
+      carid: rb.carID,
+      from_date: rb.from_date,
+      to_date: rb.to_date,
+      rent: rb.rent,
+      trip_status: 0,
+      cancel: 0,
+    });
+    await cb.save();
+    const carss = await requestbookings.find({ carID: req.body.carid });
+    console.log(carss);
+    for (let index = 0; index < carss.length; index++) {
+      if (carss[index].booking_status == -1) {
+        var d3 = date.format(new Date(carss[index].to_date), pattern);
+        var d4 = date.format(new Date(carss[index].from_date), pattern);
+        if (((d2 < d3) && (d3 < d1)) || ((d2 < d4) && (d4 < d1)) || ((d4 < d2) && (d3 > d2)) ) {
+          await requestbookings.findOneAndUpdate(
+            { bookingID: carss[index].bookingID },
+            { booking_status: 0 }
+          );
         }
-        rb.forEach(function (item, index) {
-          if (item.booking_status == -1) {
-            var d3 = date.format(new Date(item.to_date), pattern);
-            var d4 = date.format(new Date(item.from_date), pattern);
-            if (d2 <= d3 <= d1 || d2 <= d4 <= d1 || d4 <= d2 <= d1 <= d3) {
-              item.booking_status = 0;
-            }
-          }
-        });
-        await rb.save(function (e) {
-          if (e) {
-            console.log(`Error in processing cancel booking request`);
-            return res
-              .status(400)
-              .json({ message: "Error in processing request" });
-          }
-          return res.status(200).json({ message: "Booking request accepted" });
-        });
       }
-    );
+    }
+    return res.status(200).json({ message: "Booking request accepted" });
   } catch (err) {
     console.log(err);
     res.status(404).json({ message: "Error in catch block" });
@@ -463,27 +359,11 @@ module.exports.acceptrequestbooking = async function (req, res) {
 
 module.exports.cancelrequestbooking = async function (req, res) {
   try {
-    await requestbookings.findOne(
+    await requestbookings.findOneAndUpdate(
       { bookingID: req.body.bookingid },
-      async function (err, rb) {
-        if (err || !rb) {
-          return res.status(400).json({ message: "Server error" });
-        }
-        console.log(rb);
-        rb.booking_status = 0;
-        await rb.save(function (e) {
-          if (e) {
-            console.log("Error in processing cancel booking request");
-            return res
-              .status(400)
-              .json({ message: "Error in processing cancel booking request" });
-          }
-          res
-            .status(200)
-            .json({ message: "Successfully cancelled booking request" });
-        });
-      }
+      { booking_status: 0 }
     );
+    res.status(200).json({ message: "Successfully cancelled booking request" });
   } catch (err) {
     console.log(err);
     res.status(404).json({ message: "Error in catch block" });
